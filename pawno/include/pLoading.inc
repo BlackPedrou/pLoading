@@ -1,8 +1,8 @@
 /*
 |====================================================|
-|++ Include     : pLoading.inc (v0.8)                |
+|++ Include     : pLoading.inc (v1.0)                |
 |++ Information : Load Screen (SinglePlayer)         |
-|++ Credits     : Toribio/Southclaw and PeterLinkson |
+|++ Credits: Toribio/Southclaw,PeterLinkson,Incognito|
 |====================================================|
 */
 
@@ -19,9 +19,7 @@
     #endif
 #endif
 
-#if !defined pLoad_Sound
-	#define pLoad_Sound 2
-#endif
+#include audio //http://forum.sa-mp.com/showthread.php?t=82162
  
 enum pL_enum
 {
@@ -30,16 +28,38 @@ enum pL_enum
     Float:pL_Value,
     Float:pL_Max,
     PlayerBar:pL_Bar,
-    PlayerText:pL_TD
+    PlayerText:pL_TD,
+	pL_Sound
 };
  
 new pL_Loading[MAX_PLAYERS][pL_enum];
 
 forward OnPlayerLoadingStart(playerid);
 forward OnPlayerLoadingEnd(playerid);
- 
+
+public OnGameModeInit()
+{
+    Audio_SetPack("loading");
+	
+	#if defined pL_Load_OnGameModeInit
+        pL_Load_OnGameModeInit();
+    #endif
+    return 1;
+}
+
+public Audio_OnClientConnect(playerid)
+{
+	Audio_TransferPack(playerid);
+	return 1;
+}
+
+new handle[MAX_PLAYERS];
 public OnPlayerConnect(playerid)
 {
+	handle[playerid] = -1;
+	handle[playerid] = Audio_Play(playerid, 1);
+	Audio_Stop(playerid, handle[playerid]);
+	
     pL_Loading[playerid][pL_TD] = CreatePlayerTextDraw(playerid,0.0, 0.0, "_");
     PlayerTextDrawFont(playerid, pL_Loading[playerid][pL_TD], 4);
     PlayerTextDrawUseBox(playerid, pL_Loading[playerid][pL_TD], 1);
@@ -53,7 +73,7 @@ public OnPlayerConnect(playerid)
     return 1;
 }
  
-stock ShowPlayerLoading(playerid, Float:time)
+stock ShowPlayerLoading(playerid, Float:time = 10.0)
 {
 	CallLocalFunction("OnPlayerLoadingStart", "d", playerid);
 
@@ -74,23 +94,12 @@ stock ShowPlayerLoading(playerid, Float:time)
     pL_Loading[playerid][pL_Timer_TD] = SetTimerEx("Loading_TD", 2750, true, "d", playerid);
     pL_Loading[playerid][pL_Timer_Bar] = SetTimerEx("Loading_Bar", 50, true, "d", playerid);
 	
-	#if pLoad_Sound == 1
-		PlayAudioStreamForPlayer(playerid, "https://dl.dropboxusercontent.com/s/hnlbexvsyobuc4o/Loading_Theme.mp3");
-	#elseif pLoad_Sound == 2
-		PlayerPlaySound(playerid, 1062, 0.0, 0.0, 0.0);
-	#elseif pLoad_Sound == 3
-		PlayerPlaySound(playerid, 1068, 0.0, 0.0, 0.0);
-	#elseif pLoad_Sound == 4
-		PlayerPlaySound(playerid, 1076, 0.0, 0.0, 0.0);
-	#elseif pLoad_Sound == 5
-		PlayerPlaySound(playerid, 1097, 0.0, 0.0, 0.0);
-	#elseif pLoad_Sound == 6
-		PlayerPlaySound(playerid, 1183, 0.0, 0.0, 0.0);
-	#elseif pLoad_Sound == 7
-		PlayerPlaySound(playerid, 1185, 0.0, 0.0, 0.0);
-	#elseif pLoad_Sound == 8
-		PlayerPlaySound(playerid, 1187, 0.0, 0.0, 0.0);
-	#endif
+	switch(pL_Loading[playerid][pL_Sound])
+	{
+		case 0: handle[playerid] = Audio_Play(playerid, 1);
+		case 1: handle[playerid] = Audio_Play(playerid, 2);
+		case 2: handle[playerid] = Audio_Play(playerid, 3);
+	}
 	
 	for(new i; i < 20; ++i) SendClientMessage(playerid, -1, "");
     return 1;
@@ -107,12 +116,7 @@ stock HidePlayerLoading(playerid)
     HidePlayerProgressBar(playerid, pL_Loading[playerid][pL_Bar]);
    
     pL_Loading[playerid][pL_Value] = 0;
-	
-	#if pLoad_Sound == 1
-		StopAudioStreamForPlayer(playerid);
-	#else
-		PlayerPlaySound(playerid, 1063, 0.0, 0.0, 0.0);
-	#endif
+	Audio_Stop(playerid, handle[playerid]);
     return 1;
 }
  
@@ -141,6 +145,17 @@ public Loading_Bar(playerid)
     }
     return 1;
 }
+
+
+#if defined _ALS_OnGameModeInit
+	#undef OnGameModeInit
+#else
+	#define _ALS_OnGameModeInit
+#endif
+#define OnGameModeInit pL_Load_OnGameModeInit
+#if defined pL_Load_OnGameModeInit
+	forward pL_Load_OnGameModeInit();
+#endif
 
 #if defined _ALS_OnPlayerConnect
     #undef OnPlayerConnect
